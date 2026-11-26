@@ -35,10 +35,13 @@ jobs:
       - name: Build APK
         run: gradle --no-daemon assembleDebug
 
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk polyhub.apk
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: PolyHub-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: polyhub.apk
+          path: polyhub.apk
           if-no-files-found: error
-          
+          compression-level: 0
