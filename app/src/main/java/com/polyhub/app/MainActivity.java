@@ -2,10 +2,11 @@
 package com.polyhub.app;
 
 import android.os.Bundle;
-import android.graphics.Color;
+import android.content.Context;
 import android.content.Intent;
 import android.content.ActivityNotFoundException;
 import android.net.Uri;
+import android.graphics.Color;
 import android.os.Environment;
 import android.app.DownloadManager;
 import android.webkit.CookieManager;
@@ -19,7 +20,6 @@ import android.webkit.WebResourceRequest;
 import android.webkit.ValueCallback;
 import android.widget.FrameLayout;
 import android.view.ViewGroup;
-import android.view.View;
 import android.widget.Toast;
 
 import androidx.activity.ComponentActivity;
@@ -36,7 +36,6 @@ public class MainActivity extends ComponentActivity {
 
     private WebView webView;
     private ValueCallback<Uri[]> fileUploadCallback;
-
     private ActivityResultLauncher<Intent> filePickerLauncher;
 
     private static final String HOME_URL =
@@ -49,16 +48,12 @@ public class MainActivity extends ComponentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // File picker result handler
         filePickerLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
-                result -> handleFilePickerResult(result)
+                this::handleFilePickerResult
         );
 
-        // Status bar and navigation bar handling
-        WindowCompat.setDecorFitsSystemWindows(
-                getWindow(), false
-        );
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
         getWindow().setStatusBarColor(Color.BLACK);
         getWindow().setNavigationBarColor(Color.BLACK);
@@ -79,16 +74,12 @@ public class MainActivity extends ComponentActivity {
         setContentView(root);
 
         WindowInsetsControllerCompat controller =
-                new WindowInsetsControllerCompat(
-                        getWindow(), root
-                );
+                new WindowInsetsControllerCompat(getWindow(), root);
 
         controller.setAppearanceLightStatusBars(false);
         controller.setAppearanceLightNavigationBars(false);
 
-        ViewCompat.setOnApplyWindowInsetsListener(
-                root, (view, insets) -> {
-
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
             Insets bars = insets.getInsets(
                     WindowInsetsCompat.Type.systemBars()
             );
@@ -114,10 +105,8 @@ public class MainActivity extends ComponentActivity {
 
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
-
         settings.setJavaScriptCanOpenWindowsAutomatically(true);
         settings.setSupportMultipleWindows(false);
 
@@ -139,7 +128,8 @@ public class MainActivity extends ComponentActivity {
 
             @Override
             public boolean shouldOverrideUrlLoading(
-                    WebView view, String url) {
+                    WebView view,
+                    String url) {
 
                 return handleNavigation(url);
             }
@@ -159,34 +149,35 @@ public class MainActivity extends ComponentActivity {
 
                 fileUploadCallback = filePathCallback;
 
-                Intent intent = new Intent(
-                        Intent.ACTION_GET_CONTENT
-                );
-
+                Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
-
                 intent.setType(getFileType(fileChooserParams));
 
                 intent.putExtra(
                         Intent.EXTRA_ALLOW_MULTIPLE,
                         fileChooserParams.getMode()
-                        == FileChooserParams.MODE_OPEN_MULTIPLE
+                                == FileChooserParams.MODE_OPEN_MULTIPLE
                 );
 
                 try {
                     filePickerLauncher.launch(
                             Intent.createChooser(
-                                    intent, "Select a file"
+                                    intent,
+                                    "Select a file"
                             )
                     );
+
                 } catch (ActivityNotFoundException e) {
+
                     fileUploadCallback = null;
                     filePathCallback.onReceiveValue(null);
+
                     Toast.makeText(
                             MainActivity.this,
                             "No file picker found",
                             Toast.LENGTH_SHORT
                     ).show();
+
                     return false;
                 }
 
@@ -194,74 +185,69 @@ public class MainActivity extends ComponentActivity {
             }
         });
 
-        // Direct file downloads
         webView.setDownloadListener(
-                (url, userAgent, contentDisposition,
-                 mimeType, contentLength) -> {
+                (url, userAgent, contentDisposition, mimeType, contentLength) -> {
 
-            try {
-                DownloadManager.Request request =
-                        new DownloadManager.Request(
-                                Uri.parse(url)
+                    try {
+
+                        DownloadManager.Request request =
+                                new DownloadManager.Request(Uri.parse(url));
+
+                        String cookies =
+                                CookieManager.getInstance().getCookie(url);
+
+                        if (cookies != null) {
+                            request.addRequestHeader("Cookie", cookies);
+                        }
+
+                        request.addRequestHeader(
+                                "User-Agent",
+                                userAgent
                         );
 
-                String cookies =
-                        CookieManager.getInstance()
-                        .getCookie(url);
+                        request.setMimeType(mimeType);
 
-                if (cookies != null) {
-                    request.addRequestHeader(
-                            "Cookie", cookies
-                    );
-                }
-
-                request.addRequestHeader(
-                        "User-Agent", userAgent
-                );
-
-                request.setMimeType(mimeType);
-
-                request.setTitle(
-                        URLUtil.guessFileName(
-                                url, contentDisposition, mimeType
-                        )
-                );
-
-                request.setDescription(
-                        "Downloading from PolyHub"
-                );
-
-                request.setNotificationVisibility(
-                        DownloadManager.Request
-                        .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
-                );
-
-                request.setDestinationInExternalPublicDir(
-                        Environment.DIRECTORY_DOWNLOADS,
-                        URLUtil.guessFileName(
-                                url, contentDisposition, mimeType
-                        )
-                );
-
-                DownloadManager manager =
-                        (DownloadManager) getSystemService(
-                                DOWNLOAD_SERVICE
+                        String fileName = URLUtil.guessFileName(
+                                url,
+                                contentDisposition,
+                                mimeType
                         );
 
-                if (manager != null) {
-                    manager.enqueue(request);
+                        request.setTitle(fileName);
+                        request.setDescription("Downloading from PolyHub");
 
-                    Toast.makeText(
-                            MainActivity.this,
-                            "Download started",
-                            Toast.LENGTH_SHORT
-                    ).show();
+                        request.setNotificationVisibility(
+                                DownloadManager.Request
+                                        .VISIBILITY_VISIBLE_NOTIFY_COMPLETED
+                        );
+
+                        request.setDestinationInExternalPublicDir(
+                                Environment.DIRECTORY_DOWNLOADS,
+                                fileName
+                        );
+
+                        DownloadManager manager =
+                                (DownloadManager) getSystemService(
+                                        Context.DOWNLOAD_SERVICE
+                                );
+
+                        if (manager != null) {
+
+                            manager.enqueue(request);
+
+                            Toast.makeText(
+                                    MainActivity.this,
+                                    "Download started",
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                        }
+
+                    } catch (Exception e) {
+
+                        openExternal(url);
+                    }
                 }
-
-            } catch (Exception e) {
-                openExternal(url);
-            }
-        });
+        );
 
         webView.loadUrl(HOME_URL);
     }
@@ -271,17 +257,20 @@ public class MainActivity extends ComponentActivity {
 
         String[] types = params.getAcceptTypes();
 
-        if (types != null && types.length == 1
-                && types[0] != null
-                && !types[0].isEmpty()) {
-            return types[0];
+        if (types != null) {
+
+            for (String type : types) {
+
+                if (type != null && !type.isEmpty()) {
+                    return type;
+                }
+            }
         }
 
         return "*/*";
     }
 
-    private void handleFilePickerResult(
-            ActivityResult result) {
+    private void handleFilePickerResult(ActivityResult result) {
 
         if (fileUploadCallback == null) {
             return;
@@ -301,12 +290,13 @@ public class MainActivity extends ComponentActivity {
                 results = new Uri[count];
 
                 for (int i = 0; i < count; i++) {
+
                     results[i] =
-                            data.getClipData()
-                            .getItemAt(i).getUri();
+                            data.getClipData().getItemAt(i).getUri();
                 }
 
             } else if (data.getData() != null) {
+
                 results = new Uri[]{
                         data.getData()
                 };
@@ -328,12 +318,13 @@ public class MainActivity extends ComponentActivity {
             return false;
         }
 
-        if (scheme.equals("http") || scheme.equals("https")) {
+        if (scheme.equalsIgnoreCase("http")
+                || scheme.equalsIgnoreCase("https")) {
 
             if (host != null &&
                     (host.equalsIgnoreCase(HOME_HOST)
-                    || host.toLowerCase().endsWith(
-                            "." + HOME_HOST))) {
+                    || host.toLowerCase().endsWith("." + HOME_HOST))) {
+
                 return false;
             }
 
@@ -348,6 +339,7 @@ public class MainActivity extends ComponentActivity {
     private void openExternal(String url) {
 
         try {
+
             Intent intent = new Intent(
                     Intent.ACTION_VIEW,
                     Uri.parse(url)
@@ -358,7 +350,7 @@ public class MainActivity extends ComponentActivity {
         } catch (ActivityNotFoundException e) {
 
             Toast.makeText(
-                    this,
+                    MainActivity.this,
                     "No app available to open this link",
                     Toast.LENGTH_SHORT
             ).show();
@@ -369,8 +361,11 @@ public class MainActivity extends ComponentActivity {
     public void onBackPressed() {
 
         if (webView != null && webView.canGoBack()) {
+
             webView.goBack();
+
         } else {
+
             super.onBackPressed();
         }
     }
@@ -379,11 +374,13 @@ public class MainActivity extends ComponentActivity {
     protected void onDestroy() {
 
         if (fileUploadCallback != null) {
+
             fileUploadCallback.onReceiveValue(null);
             fileUploadCallback = null;
         }
 
         if (webView != null) {
+
             webView.destroy();
             webView = null;
         }
