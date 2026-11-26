@@ -1,13 +1,22 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="#000000">
+    <uses-permission android:name="android.permission.INTERNET" />
 
-    <WebView
-        android:id="@+id/webView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+    <application
+        android:allowBackup="true"
+        android:label="PolyHub"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
-</LinearLayout>
+        <activity
+            android:name="com.polyhub.app.MainActivity"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+    </application>
+</manifest>
